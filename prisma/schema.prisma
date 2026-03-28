@@ -1,0 +1,172 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// ─── Meses de controle ───────────────────────────────────────────────────────
+model Month {
+  id            String    @id @default(cuid())
+  year          Int
+  month         Int
+  lastUpdatedAt DateTime?
+  createdAt     DateTime  @default(now())
+
+  incomeEntries      IncomeEntry[]
+  accountBalances    AccountBalance[]
+  subcategoryBudgets SubcategoryBudget[]
+  transactions       Transaction[]
+
+  @@unique([year, month])
+  @@map("months")
+}
+
+// ─── Contas correntes ─────────────────────────────────────────────────────────
+model Account {
+  id   String      @id @default(cuid())
+  name String
+  type AccountType @default(CHECKING)
+
+  balances AccountBalance[]
+
+  @@map("accounts")
+}
+
+enum AccountType {
+  CHECKING
+  CASH
+}
+
+model AccountBalance {
+  id        String  @id @default(cuid())
+  accountId String
+  monthId   String
+  balance   Float   @default(0)
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  month   Month   @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, monthId])
+  @@map("account_balances")
+}
+
+// ─── Categorias e subcategorias ───────────────────────────────────────────────
+model Category {
+  id   String @id @default(cuid())
+  name String @unique
+
+  subcategories Subcategory[]
+
+  @@map("categories")
+}
+
+model Subcategory {
+  id            String        @id @default(cuid())
+  categoryId    String
+  name          String
+  dueDay        Int?
+  paymentMethod PaymentMethod @default(CREDIT)
+  cardId        String?
+
+  category     Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  card         Card?               @relation(fields: [cardId], references: [id])
+  budgets      SubcategoryBudget[]
+  transactions Transaction[]
+
+  @@map("subcategories")
+}
+
+enum PaymentMethod {
+  CREDIT
+  DEBIT
+}
+
+// ─── Teto por subcategoria por mês ───────────────────────────────────────────
+model SubcategoryBudget {
+  id            String @id @default(cuid())
+  subcategoryId String
+  monthId       String
+  budgetAmount  Float  @default(0)
+  paidAmount    Float  @default(0)
+
+  subcategory Subcategory @relation(fields: [subcategoryId], references: [id], onDelete: Cascade)
+  month       Month       @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  @@unique([subcategoryId, monthId])
+  @@map("subcategory_budgets")
+}
+
+// ─── Receitas ─────────────────────────────────────────────────────────────────
+model IncomeEntry {
+  id             String   @id @default(cuid())
+  monthId        String
+  description    String
+  expectedAmount Float
+  actualAmount   Float    @default(0)
+  createdAt      DateTime @default(now())
+
+  month Month @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  @@map("income_entries")
+}
+
+// ─── Cartões ──────────────────────────────────────────────────────────────────
+model Card {
+  id       String   @id @default(cuid())
+  name     String
+  colorHex String   @default("#6366f1")
+  bank     String?
+  type     CardType @default(MAIN)
+
+  subcategories Subcategory[]
+  transactions  Transaction[]
+
+  @@map("cards")
+}
+
+enum CardType {
+  MAIN
+  DIGITAL
+  ADDITIONAL
+}
+
+// ─── Lançamentos ─────────────────────────────────────────────────────────────
+model Transaction {
+  id                 String          @id @default(cuid())
+  monthId            String
+  cardId             String?
+  subcategoryId      String?
+  date               DateTime
+  description        String
+  amount             Float
+  type               TransactionType @default(ONE_TIME)
+  installmentCurrent Int?
+  installmentTotal   Int?
+  isCounted          Boolean         @default(false)
+  isPaid             Boolean         @default(false)
+  createdAt          DateTime        @default(now())
+
+  month       Month        @relation(fields: [monthId], references: [id], onDelete: Cascade)
+  card        Card?        @relation(fields: [cardId], references: [id])
+  subcategory Subcategory? @relation(fields: [subcategoryId], references: [id])
+
+  @@map("transactions")
+}
+
+enum TransactionType {
+  FIXED
+  ONE_TIME
+  INSTALLMENT
+}
+
+// ─── Planejamento percentual ──────────────────────────────────────────────────
+model PlanningConfig {
+  id         String @id @default(cuid())
+  label      String
+  percentage Float
+  sortOrder  Int    @default(0)
+
+  @@map("planning_config")
+}

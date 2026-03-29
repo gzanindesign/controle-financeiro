@@ -59,7 +59,7 @@ export function IconPicker({ value, onChange }: Props) {
         }}
       >
         {filtered.map((name) => {
-          const Icon = (Icons as Record<string, Icons.LucideIcon>)[name];
+          const Icon = (Icons as unknown as Record<string, Icons.LucideIcon>)[name];
           if (!Icon) return null;
           const selected = value === name;
           return (
@@ -91,7 +91,7 @@ export function IconPicker({ value, onChange }: Props) {
 }
 
 export function CategoryIcon({ name, size = 16, color }: { name?: string | null; size?: number; color?: string }) {
-  const Icon = name ? (Icons as Record<string, Icons.LucideIcon>)[name] : Icons.Tag;
+  const Icon = name ? (Icons as unknown as Record<string, Icons.LucideIcon>)[name] : Icons.Tag;
   const style = color ? { color } : undefined;
   return Icon ? <Icon size={size} style={style} /> : <Icons.Tag size={size} style={style} />;
 }

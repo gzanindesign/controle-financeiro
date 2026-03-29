@@ -1,13 +1,16 @@
 import { cn } from "@/lib/utils";
 
-export function Input({ className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, disabled, ...props }: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
+      disabled={disabled}
       className={cn("w-full rounded px-3 py-2 text-sm outline-none transition", className)}
       style={{
-        backgroundColor: "var(--bg-elevated)",
+        backgroundColor: "var(--bg-input)",
         border: "1px solid var(--bg-border)",
         color: "var(--color-text)",
+        opacity: disabled ? 0.5 : 1,
+        cursor: disabled ? "not-allowed" : undefined,
       }}
       {...props}
     />
@@ -19,7 +22,7 @@ export function Select({ className, children, ...props }: React.SelectHTMLAttrib
     <select
       className={cn("w-full rounded px-3 py-2 text-sm outline-none transition", className)}
       style={{
-        backgroundColor: "var(--bg-elevated)",
+        backgroundColor: "var(--bg-input)",
         border: "1px solid var(--bg-border)",
         color: "var(--color-text)",
       }}

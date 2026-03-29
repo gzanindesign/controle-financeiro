@@ -8,6 +8,7 @@ const schema = z.object({
   dueDay: z.number().int().min(1).max(31).nullable().optional(),
   paymentMethod: z.enum(["CREDIT", "DEBIT"]).default("CREDIT"),
   cardId: z.string().nullable().optional(),
+  kind: z.enum(["ESSENTIAL", "FREE", "INVESTMENT"]).default("ESSENTIAL"),
 });
 
 export async function POST(req: NextRequest) {

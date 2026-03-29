@@ -1,18 +1,30 @@
 @import "tailwindcss";
 
 :root {
+  --font-size-button: 14px;
   --bg-base: #0f1117;
   --bg-surface: #1a1d27;
   --bg-elevated: #22263a;
+  --bg-input: var(--bg-elevated);
   --bg-border: #2d3147;
-  --color-primary: #22c55e;
-  --color-primary-dark: #15803d;
+  --color-primary: #2563eb;
+  --color-primary-dark: #1d4ed8;
   --color-danger: #ef4444;
   --color-warning: #f59e0b;
   --color-success: #22c55e;
   --color-text: #f9fafb;
   --color-text-muted: #9ca3af;
   --sidebar-width: 220px;
+}
+
+html[data-theme="light"] {
+  --bg-base: #f5f6f8;
+  --bg-surface: #ffffff;
+  --bg-elevated: #eef0f3;
+  --bg-input: var(--bg-base);
+  --bg-border: #d1d5db;
+  --color-text: #111827;
+  --color-text-muted: #6b7280;
 }
 
 @theme inline {
@@ -35,3 +47,18 @@ body {
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: var(--bg-surface); }
 ::-webkit-scrollbar-thumb { background: var(--bg-border); border-radius: 3px; }
+
+.nav-item:hover {
+  background-color: var(--bg-elevated);
+}
+
+html[data-theme="light"] .category-card {
+  background: var(--bg-surface) !important;
+}
+
+.view-toggle-bg { background-color: var(--bg-border); }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}

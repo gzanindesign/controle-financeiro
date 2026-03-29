@@ -43,3 +43,6 @@ next-env.d.ts
 /app/generated/prisma
 prisma/dev.db
 prisma/dev.db-journal
+
+*storybook.log
+storybook-static

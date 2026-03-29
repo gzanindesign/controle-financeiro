@@ -10,9 +10,16 @@ export default async function CategoriasPage({
   const params = await searchParams;
   const { month, year } = parseMonthParams(params);
 
+  const now = new Date();
+  const isFuture = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth() + 1);
+
   const monthRecord = await prisma.month.findUnique({
     where: { year_month: { year, month } },
   });
+
+  const txWhere = monthRecord
+    ? { monthId: monthRecord.id, ...(isFuture ? { type: { in: ["FIXED", "INSTALLMENT"] as ("FIXED" | "INSTALLMENT")[] } } : {}) }
+    : undefined;
 
   const [categories, cards] = await Promise.all([
     prisma.category.findMany({
@@ -21,9 +28,7 @@ export default async function CategoriasPage({
           include: {
             card: true,
             budgets: monthRecord ? { where: { monthId: monthRecord.id } } : false,
-            transactions: monthRecord
-              ? { where: { monthId: monthRecord.id, isCounted: true } }
-              : false,
+            transactions: txWhere ? { where: txWhere } : false,
           },
         },
       },
@@ -35,10 +40,13 @@ export default async function CategoriasPage({
   const mapped = categories.map((cat) => ({
     id: cat.id,
     name: cat.name,
+    icon: cat.icon,
+    color: cat.color ?? "#6366f1",
     subcategories: cat.subcategories.map((sub) => {
-      const budget = sub.budgets[0]?.budgetAmount ?? 0;
-      const paid = sub.budgets[0]?.paidAmount ?? 0;
-      const actual = sub.transactions.reduce((s, t) => s + t.amount, 0);
+      const budget = (sub.budgets ?? [])[0]?.budgetAmount ?? 0;
+      const txs = sub.transactions ?? [];
+      const actual = txs.reduce((s, t) => s + t.amount, 0);
+      const paid = isFuture ? 0 : txs.filter((t) => t.isPaid).reduce((s, t) => s + t.amount, 0);
       return {
         id: sub.id,
         name: sub.name,
@@ -46,6 +54,7 @@ export default async function CategoriasPage({
         paymentMethod: sub.paymentMethod,
         cardId: sub.cardId,
         card: sub.card ? { id: sub.card.id, name: sub.card.name, colorHex: sub.card.colorHex } : null,
+        kind: sub.kind,
         budget,
         actual,
         paid,

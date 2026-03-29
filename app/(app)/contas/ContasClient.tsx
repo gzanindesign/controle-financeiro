@@ -5,7 +5,8 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, Thead, Tbody, Th, Td, TotalRow } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Input, Label, Select } from "@/components/ui/Input";
+import { Input, Label } from "@/components/ui/Input";
+import { SelectWithNew } from "@/components/ui/SelectWithNew";
 import { formatCurrency } from "@/lib/utils";
 import { Plus, Trash2, Pencil } from "lucide-react";
 
@@ -25,6 +26,7 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", type: "CHECKING", balance: "" });
   const [loading, setLoading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
   const expectedBalance = totalIncome - totalPaid;
@@ -51,10 +53,14 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
     setLoading(false); setModal(null);
   }
 
-  async function remove(id: string) {
-    if (!confirm("Remover conta?")) return;
-    await fetch(`/api/accounts/${id}`, { method: "DELETE" });
-    setAccounts((p) => p.filter((a) => a.id !== id));
+  function remove(id: string) {
+    setConfirmModal({
+      message: "Tem certeza que deseja remover esta conta?",
+      onConfirm: async () => {
+        await fetch(`/api/accounts/${id}`, { method: "DELETE" });
+        setAccounts((p) => p.filter((a) => a.id !== id));
+      },
+    });
   }
 
   return (
@@ -107,8 +113,8 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
                 <Td style={{ color: "var(--color-text-muted)" }}>{a.type === "CHECKING" ? "Conta Corrente" : "Dinheiro em Mão"}</Td>
                 <Td className="text-right font-medium">{formatCurrency(a.balance)}</Td>
                 <Td className="text-right">
-                  <button onClick={() => openBalance(a.id)} className="mr-3 hover:opacity-70" style={{ color: "var(--color-text-muted)" }}><Pencil size={14} /></button>
-                  <button onClick={() => remove(a.id)} className="hover:opacity-70" style={{ color: "var(--color-danger)" }}><Trash2 size={14} /></button>
+                  <button onClick={() => openBalance(a.id)} className="p-1 rounded mr-2 hover:opacity-70" style={{ color: "var(--color-text-muted)" }}><Pencil size={16} /></button>
+                  <button onClick={() => remove(a.id)} className="p-1 rounded hover:opacity-70" style={{ color: "var(--color-danger)" }}><Trash2 size={16} /></button>
                 </Td>
               </tr>
             ))}
@@ -131,14 +137,25 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
           <div><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} placeholder="ex: Itaú Ana, Nubank..." /></div>
           <div>
             <Label>Tipo</Label>
-            <Select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}>
-              <option value="CHECKING">Conta Corrente</option>
-              <option value="CASH">Dinheiro em Mão</option>
-            </Select>
+            <SelectWithNew
+              value={form.type}
+              onChange={(v) => setForm((p) => ({ ...p, type: v }))}
+              options={[{ value: "CHECKING", label: "Conta Corrente" }, { value: "CASH", label: "Dinheiro em Mão" }]}
+            />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-2">
             <Button variant="ghost" onClick={() => setModal(null)}>Cancelar</Button>
             <Button variant="primary" onClick={addAccount} disabled={loading || !form.name}>Salvar</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal open={!!confirmModal} onClose={() => setConfirmModal(null)} title="Confirmar exclusão">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{confirmModal?.message}</p>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="ghost" onClick={() => setConfirmModal(null)}>Cancelar</Button>
+            <Button variant="danger" onClick={() => { confirmModal?.onConfirm(); setConfirmModal(null); }}>Excluir</Button>
           </div>
         </div>
       </Modal>
@@ -146,7 +163,7 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
       <Modal open={modal === "balance"} onClose={() => setModal(null)} title="Atualizar Saldo">
         <div className="flex flex-col gap-4">
           <div><Label>Saldo Atual (R$)</Label><Input type="number" step="0.01" value={form.balance} onChange={(e) => setForm((p) => ({ ...p, balance: e.target.value }))} /></div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 mt-2">
             <Button variant="ghost" onClick={() => setModal(null)}>Cancelar</Button>
             <Button variant="primary" onClick={saveBalance} disabled={loading}>Salvar</Button>
           </div>

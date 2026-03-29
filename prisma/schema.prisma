@@ -12,12 +12,14 @@ model Month {
   year          Int
   month         Int
   lastUpdatedAt DateTime?
+  closedAt      DateTime?
   createdAt     DateTime  @default(now())
 
   incomeEntries      IncomeEntry[]
   accountBalances    AccountBalance[]
   subcategoryBudgets SubcategoryBudget[]
   transactions       Transaction[]
+  incomeAllocation   IncomeAllocation?
 
   @@unique([year, month])
   @@map("months")
@@ -54,8 +56,10 @@ model AccountBalance {
 
 // ─── Categorias e subcategorias ───────────────────────────────────────────────
 model Category {
-  id   String @id @default(cuid())
-  name String @unique
+  id    String  @id @default(cuid())
+  name  String  @unique
+  icon  String? @default("Tag")
+  color String? @default("#6366f1")
 
   subcategories Subcategory[]
 
@@ -63,17 +67,19 @@ model Category {
 }
 
 model Subcategory {
-  id            String        @id @default(cuid())
+  id            String          @id @default(cuid())
   categoryId    String
   name          String
   dueDay        Int?
-  paymentMethod PaymentMethod @default(CREDIT)
+  paymentMethod PaymentMethod   @default(CREDIT)
   cardId        String?
+  kind          SubcategoryKind @default(ESSENTIAL)
 
   category     Category            @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   card         Card?               @relation(fields: [cardId], references: [id])
-  budgets      SubcategoryBudget[]
-  transactions Transaction[]
+  budgets          SubcategoryBudget[]
+  transactions     Transaction[]
+  merchantMappings MerchantMapping[]
 
   @@map("subcategories")
 }
@@ -81,6 +87,12 @@ model Subcategory {
 enum PaymentMethod {
   CREDIT
   DEBIT
+}
+
+enum SubcategoryKind {
+  ESSENTIAL
+  FREE
+  INVESTMENT
 }
 
 // ─── Teto por subcategoria por mês ───────────────────────────────────────────
@@ -134,19 +146,21 @@ enum CardType {
 
 // ─── Lançamentos ─────────────────────────────────────────────────────────────
 model Transaction {
-  id                 String          @id @default(cuid())
-  monthId            String
-  cardId             String?
-  subcategoryId      String?
-  date               DateTime
-  description        String
-  amount             Float
-  type               TransactionType @default(ONE_TIME)
-  installmentCurrent Int?
-  installmentTotal   Int?
-  isCounted          Boolean         @default(false)
-  isPaid             Boolean         @default(false)
-  createdAt          DateTime        @default(now())
+  id                  String          @id @default(cuid())
+  monthId             String
+  cardId              String?
+  subcategoryId       String?
+  date                DateTime
+  description         String
+  originalDescription String?
+  amount              Float
+  type                TransactionType @default(ONE_TIME)
+  installmentCurrent  Int?
+  installmentTotal    Int?
+  groupId             String?
+  isCounted           Boolean         @default(false)
+  isPaid              Boolean         @default(false)
+  createdAt           DateTime        @default(now())
 
   month       Month        @relation(fields: [monthId], references: [id], onDelete: Cascade)
   card        Card?        @relation(fields: [cardId], references: [id])
@@ -159,6 +173,31 @@ enum TransactionType {
   FIXED
   ONE_TIME
   INSTALLMENT
+}
+
+// ─── Distribuição de renda por mês ───────────────────────────────────────────
+model IncomeAllocation {
+  id         String @id @default(cuid())
+  monthId    String @unique
+  essential  Float  @default(0)
+  free       Float  @default(0)
+  investment Float  @default(0)
+
+  month Month @relation(fields: [monthId], references: [id], onDelete: Cascade)
+
+  @@map("income_allocations")
+}
+
+// ─── Mapeamento de estabelecimentos ──────────────────────────────────────────
+model MerchantMapping {
+  id            String       @id @default(cuid())
+  merchantCode  String       @unique
+  friendlyName  String?
+  subcategoryId String?
+  subcategory   Subcategory? @relation(fields: [subcategoryId], references: [id], onDelete: SetNull)
+  createdAt     DateTime     @default(now())
+
+  @@map("merchant_mappings")
 }
 
 // ─── Planejamento percentual ──────────────────────────────────────────────────

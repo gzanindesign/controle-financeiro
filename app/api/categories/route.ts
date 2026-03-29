@@ -11,10 +11,10 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  const schema = z.object({ name: z.string().min(1) });
+  const schema = z.object({ name: z.string().min(1), icon: z.string().optional(), color: z.string().optional() });
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const category = await prisma.category.create({ data: { name: parsed.data.name } });
+  const category = await prisma.category.create({ data: { name: parsed.data.name, icon: parsed.data.icon ?? "Tag", color: parsed.data.color ?? "#6366f1" } });
   return NextResponse.json(category, { status: 201 });
 }

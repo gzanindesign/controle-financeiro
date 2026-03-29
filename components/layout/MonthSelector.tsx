@@ -2,7 +2,6 @@
 
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback } from "react";
 
 const MONTHS = [
   "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
@@ -18,15 +17,12 @@ export function MonthSelector() {
   const month = Number(searchParams.get("mes") ?? now.getMonth() + 1);
   const year = Number(searchParams.get("ano") ?? now.getFullYear());
 
-  const navigate = useCallback(
-    (m: number, y: number) => {
-      const params = new URLSearchParams(searchParams.toString());
-      params.set("mes", String(m));
-      params.set("ano", String(y));
-      router.push(`${pathname}?${params.toString()}`);
-    },
-    [router, pathname, searchParams]
-  );
+  function navigate(m: number, y: number) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("mes", String(m));
+    params.set("ano", String(y));
+    router.push(`${pathname}?${params.toString()}`);
+  }
 
   function prev() {
     if (month === 1) navigate(12, year - 1);

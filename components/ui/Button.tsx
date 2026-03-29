@@ -15,15 +15,15 @@ const variantStyles: Record<Variant, React.CSSProperties> = {
 };
 
 const sizeClasses: Record<Size, string> = {
-  sm: "px-3 py-1.5 text-xs",
-  md: "px-4 py-2 text-sm",
+  sm: "px-3 py-1.5",
+  md: "px-4 py-2",
 };
 
 export function Button({ variant = "ghost", size = "md", className, style, children, ...props }: ButtonProps) {
   return (
     <button
-      className={cn("rounded font-medium transition-opacity hover:opacity-80 disabled:opacity-40 cursor-pointer", sizeClasses[size], className)}
-      style={{ ...variantStyles[variant], ...style }}
+      className={cn("font-medium transition-opacity hover:opacity-80 disabled:opacity-40 cursor-pointer", sizeClasses[size], className)}
+      style={{ borderRadius: "8px", fontSize: "14px", ...variantStyles[variant], ...style }}
       {...props}
     >
       {children}

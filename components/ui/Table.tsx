@@ -1,3 +1,4 @@
+import React from "react";
 import { cn } from "@/lib/utils";
 
 export function Table({ className, children }: React.HTMLAttributes<HTMLTableElement>) {
@@ -40,12 +41,26 @@ export function Td({ children, className, style, ...props }: React.TdHTMLAttribu
 }
 
 export function TotalRow({ children, className }: { children: React.ReactNode; className?: string }) {
+  const childArray = React.Children.toArray(children);
+  const styledChildren = childArray.map((child, index) => {
+    if (!React.isValidElement(child)) return child;
+    const isFirst = index === 0;
+    const isLast = index === childArray.length - 1;
+    const extraStyle: React.CSSProperties = {};
+    if (isFirst) { extraStyle.borderTopLeftRadius = "8px"; extraStyle.borderBottomLeftRadius = "8px"; }
+    if (isLast) { extraStyle.borderTopRightRadius = "8px"; extraStyle.borderBottomRightRadius = "8px"; }
+    const existing = (child as React.ReactElement<{ style?: React.CSSProperties }>).props.style ?? {};
+    return React.cloneElement(child as React.ReactElement<{ style?: React.CSSProperties }>, {
+      style: { ...existing, borderBottom: "none", ...extraStyle },
+    });
+  });
+
   return (
     <tr
       className={cn("font-semibold", className)}
-      style={{ borderTop: "2px solid var(--bg-border)", backgroundColor: "var(--bg-elevated)" }}
+      style={{ backgroundColor: "var(--bg-elevated)" }}
     >
-      {children}
+      {styledChildren}
     </tr>
   );
 }

@@ -4,8 +4,22 @@ import { useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
-import { Input, Label, Select } from "@/components/ui/Input";
+import { Input, Label } from "@/components/ui/Input";
+import { SelectWithNew } from "@/components/ui/SelectWithNew";
 import { Trash2, Pencil, Plus, CreditCard } from "lucide-react";
+
+const PALETTE = [
+  { hex: "#6366f1", label: "Azul" },
+  { hex: "#22c55e", label: "Verde" },
+  { hex: "#f97316", label: "Laranja" },
+  { hex: "#ec4899", label: "Rosa" },
+  { hex: "#a855f7", label: "Roxo" },
+  { hex: "#ef4444", label: "Vermelho" },
+  { hex: "#eab308", label: "Amarelo" },
+  { hex: "#06b6d4", label: "Ciano" },
+  { hex: "#14b8a6", label: "Teal" },
+  { hex: "#64748b", label: "Grafite" },
+];
 
 interface CardItem { id: string; name: string; colorHex: string; bank: string; type: string }
 
@@ -15,6 +29,7 @@ export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ name: "", colorHex: "#6366f1", bank: "", type: "MAIN" });
   const [loading, setLoading] = useState(false);
+  const [confirmModal, setConfirmModal] = useState<{ message: string; onConfirm: () => void } | null>(null);
 
   function openAdd() { setForm({ name: "", colorHex: "#6366f1", bank: "", type: "MAIN" }); setModal("add"); }
   function openEdit(c: CardItem) { setEditingId(c.id); setForm({ name: c.name, colorHex: c.colorHex, bank: c.bank, type: c.type }); setModal("edit"); }
@@ -32,10 +47,14 @@ export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
     setLoading(false); setModal(null);
   }
 
-  async function remove(id: string) {
-    if (!confirm("Remover cartão? Os lançamentos vinculados perderão a referência.")) return;
-    await fetch(`/api/cards/${id}`, { method: "DELETE" });
-    setCards((p) => p.filter((c) => c.id !== id));
+  function remove(id: string) {
+    setConfirmModal({
+      message: "Remover cartão? Os lançamentos vinculados perderão a referência.",
+      onConfirm: async () => {
+        await fetch(`/api/cards/${id}`, { method: "DELETE" });
+        setCards((p) => p.filter((c) => c.id !== id));
+      },
+    });
   }
 
   const typeLabel: Record<string, string> = { MAIN: "Principal", DIGITAL: "Digital", ADDITIONAL: "Adicional" };
@@ -68,8 +87,8 @@ export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <button onClick={() => openEdit(c)} className="hover:opacity-70" style={{ color: "var(--color-text-muted)" }}><Pencil size={14} /></button>
-                <button onClick={() => remove(c.id)} className="hover:opacity-70" style={{ color: "var(--color-danger)" }}><Trash2 size={14} /></button>
+                <button onClick={() => openEdit(c)} className="p-1 rounded hover:opacity-70" style={{ color: "var(--color-text-muted)" }}><Pencil size={16} /></button>
+                <button onClick={() => remove(c.id)} className="p-1 rounded hover:opacity-70" style={{ color: "var(--color-danger)" }}><Trash2 size={16} /></button>
               </div>
             </div>
           ))}
@@ -86,24 +105,44 @@ export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
             </div>
             <div>
               <Label>Tipo</Label>
-              <Select value={form.type} onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}>
-                <option value="MAIN">Principal</option>
-                <option value="DIGITAL">Digital</option>
-                <option value="ADDITIONAL">Adicional</option>
-              </Select>
+              <SelectWithNew
+                value={form.type}
+                onChange={(v) => setForm((p) => ({ ...p, type: v }))}
+                options={[{ value: "MAIN", label: "Principal" }, { value: "DIGITAL", label: "Digital" }, { value: "ADDITIONAL", label: "Adicional" }]}
+              />
             </div>
           </div>
           <div>
             <Label>Cor de Identificação</Label>
-            <div className="flex items-center gap-3">
-              <input type="color" value={form.colorHex} onChange={(e) => setForm((p) => ({ ...p, colorHex: e.target.value }))} className="w-12 h-9 rounded cursor-pointer" style={{ padding: "2px", backgroundColor: "var(--bg-elevated)", border: "1px solid var(--bg-border)" }} />
-              <Input value={form.colorHex} onChange={(e) => setForm((p) => ({ ...p, colorHex: e.target.value }))} className="flex-1" placeholder="#6366f1" />
-              <div className="w-12 h-9 rounded flex-shrink-0" style={{ backgroundColor: form.colorHex }} />
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {PALETTE.map(({ hex, label }) => (
+                <button
+                  key={hex}
+                  title={label}
+                  type="button"
+                  onClick={() => setForm((p) => ({ ...p, colorHex: hex }))}
+                  className="transition-transform hover:scale-110"
+                  style={{
+                    width: 28, height: 28, borderRadius: "50%", backgroundColor: hex, flexShrink: 0,
+                    outline: form.colorHex === hex ? `3px solid ${hex}` : "3px solid transparent",
+                    outlineOffset: 2,
+                  }}
+                />
+              ))}
             </div>
           </div>
           <div className="flex justify-end gap-2 mt-2">
             <Button variant="ghost" onClick={() => setModal(null)}>Cancelar</Button>
             <Button variant="primary" onClick={save} disabled={loading || !form.name}>{loading ? "Salvando..." : "Salvar"}</Button>
+          </div>
+        </div>
+      </Modal>
+      <Modal open={!!confirmModal} onClose={() => setConfirmModal(null)} title="Confirmar exclusão">
+        <div className="flex flex-col gap-4">
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>{confirmModal?.message}</p>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="ghost" onClick={() => setConfirmModal(null)}>Cancelar</Button>
+            <Button variant="danger" onClick={() => { confirmModal?.onConfirm(); setConfirmModal(null); }}>Excluir</Button>
           </div>
         </div>
       </Modal>

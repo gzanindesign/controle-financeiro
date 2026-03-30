@@ -14,7 +14,7 @@ export default async function ContasPage({
     where: { year_month: { year, month } },
   });
 
-  const accounts = await prisma.account.findMany({ orderBy: { name: "asc" } });
+  const accounts = await prisma.bankAccount.findMany({ orderBy: { name: "asc" } });
 
   const balances = monthRecord
     ? await prisma.accountBalance.findMany({ where: { monthId: monthRecord.id } })

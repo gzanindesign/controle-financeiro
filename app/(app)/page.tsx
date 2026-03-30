@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { parseMonthParams } from "@/lib/month";
 import { DashboardClient } from "./DashboardClient";
@@ -83,20 +84,22 @@ export default async function DashboardPage({
 
   return (
     <div className="max-w-5xl mx-auto">
-      <DashboardClient
-        income={income}
-        expenses={expenses}
-        lastUpdatedAt={monthRecord?.lastUpdatedAt?.toISOString() ?? null}
-        closedAt={monthRecord?.closedAt?.toISOString() ?? null}
-        hasIncome={incomeEntries.length > 0}
-        monthId={monthRecord?.id ?? null}
-        month={month}
-        year={year}
-        totalAccountBalance={totalAccountBalance}
-        allocation={allocation}
-        spendingByKind={spendingByKind}
-        categoryCards={categoryCards}
-      />
+      <Suspense fallback={null}>
+        <DashboardClient
+          income={income}
+          expenses={expenses}
+          lastUpdatedAt={monthRecord?.lastUpdatedAt?.toISOString() ?? null}
+          closedAt={monthRecord?.closedAt?.toISOString() ?? null}
+          hasIncome={incomeEntries.length > 0}
+          monthId={monthRecord?.id ?? null}
+          month={month}
+          year={year}
+          totalAccountBalance={totalAccountBalance}
+          allocation={allocation}
+          spendingByKind={spendingByKind}
+          categoryCards={categoryCards}
+        />
+      </Suspense>
     </div>
   );
 }

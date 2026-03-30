@@ -11,7 +11,7 @@ import {
   Settings,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -39,13 +39,26 @@ function NavItem({ href, label, Icon, active, monthQuery }: { href: string; labe
   );
 }
 
-export function Sidebar() {
+function SidebarNav() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const mes = searchParams.get("mes");
   const ano = searchParams.get("ano");
   const monthQuery = mes && ano ? `mes=${mes}&ano=${ano}` : mes ? `mes=${mes}` : ano ? `ano=${ano}` : "";
 
+  return (
+    <nav className="flex-1 py-3 overflow-y-auto">
+      {navItems.map(({ href, label, icon: Icon }) => {
+        const active = pathname === href;
+        return (
+          <NavItem key={href} href={href} label={label} Icon={Icon} active={active} monthQuery={monthQuery} />
+        );
+      })}
+    </nav>
+  );
+}
+
+export function Sidebar() {
   return (
     <aside
       className="flex flex-col shrink-0 h-full"
@@ -65,14 +78,9 @@ export function Sidebar() {
         </span>
       </div>
 
-      <nav className="flex-1 py-3 overflow-y-auto">
-        {navItems.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href;
-          return (
-            <NavItem key={href} href={href} label={label} Icon={Icon} active={active} monthQuery={monthQuery} />
-          );
-        })}
-      </nav>
+      <Suspense fallback={<nav className="flex-1 py-3" />}>
+        <SidebarNav />
+      </Suspense>
 
       <div
         className="flex items-center justify-end px-5 py-3"

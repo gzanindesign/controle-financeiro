@@ -25,7 +25,7 @@ export default async function RendaPage({
     monthRecord
       ? prisma.transaction.findMany({
           where: { monthId: monthRecord.id },
-          include: { subcategory: true },
+          select: { amount: true, subcategory: { select: { kind: true } } },
         })
       : [],
   ]);

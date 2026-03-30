@@ -105,6 +105,7 @@ model AccountBalance {
   month   Month   @relation(fields: [monthId], references: [id], onDelete: Cascade)
 
   @@unique([accountId, monthId])
+  @@index([monthId])
   @@map("account_balances")
 }
 
@@ -135,6 +136,8 @@ model Subcategory {
   transactions     Transaction[]
   merchantMappings MerchantMapping[]
 
+  @@index([categoryId])
+  @@index([cardId])
   @@map("subcategories")
 }
 
@@ -161,6 +164,7 @@ model SubcategoryBudget {
   month       Month       @relation(fields: [monthId], references: [id], onDelete: Cascade)
 
   @@unique([subcategoryId, monthId])
+  @@index([monthId])
   @@map("subcategory_budgets")
 }
 
@@ -175,6 +179,7 @@ model IncomeEntry {
 
   month Month @relation(fields: [monthId], references: [id], onDelete: Cascade)
 
+  @@index([monthId])
   @@map("income_entries")
 }
 
@@ -220,6 +225,11 @@ model Transaction {
   card        Card?        @relation(fields: [cardId], references: [id])
   subcategory Subcategory? @relation(fields: [subcategoryId], references: [id])
 
+  @@index([monthId])
+  @@index([monthId, isPaid])
+  @@index([cardId])
+  @@index([subcategoryId])
+  @@index([groupId])
   @@map("transactions")
 }
 

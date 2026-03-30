@@ -29,9 +29,9 @@ export default async function DashboardPage({
           include: { subcategory: { include: { category: true } } },
         })
       : [],
-    isFuture ? [] : (monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, isPaid: true } }) : []),
-    monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, ...(isFuture ? futureTxTypes : {}) }, include: { subcategory: { include: { category: true } } } }) : [],
-    monthRecord ? prisma.accountBalance.findMany({ where: { monthId: monthRecord.id } }) : [],
+    isFuture ? [] : (monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, isPaid: true }, select: { amount: true } }) : []),
+    monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, ...(isFuture ? futureTxTypes : {}) }, select: { amount: true, subcategoryId: true, subcategory: { select: { kind: true, category: { select: { name: true, icon: true, color: true } } } } } }) : [],
+    monthRecord ? prisma.accountBalance.findMany({ where: { monthId: monthRecord.id }, select: { balance: true } }) : [],
   ]);
 
   const income = {

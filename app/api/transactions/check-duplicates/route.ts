@@ -16,7 +16,16 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ duplicates: [] });
     }
 
+    // Determina o intervalo de datas dos itens para restringir a busca
+    const dates = items.map((i) => i.date).sort();
+    const minDate = new Date(dates[0] + "T00:00:00Z");
+    const maxDate = new Date(dates[dates.length - 1] + "T23:59:59Z");
+    // Expande 1 mês para cada lado para cobrir lançamentos de bordas de mês
+    minDate.setMonth(minDate.getMonth() - 1);
+    maxDate.setMonth(maxDate.getMonth() + 1);
+
     const allTransactions = await prisma.transaction.findMany({
+      where: { date: { gte: minDate, lte: maxDate } },
       select: { date: true, description: true, originalDescription: true, amount: true },
     });
 

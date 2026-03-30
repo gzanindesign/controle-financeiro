@@ -10,23 +10,28 @@ export default async function ContasPage({
   const params = await searchParams;
   const { month, year } = parseMonthParams(params);
 
-  const monthRecord = await prisma.month.findUnique({
-    where: { year_month: { year, month } },
-  });
+  const [monthRecord, accounts] = await Promise.all([
+    prisma.month.findUnique({ where: { year_month: { year, month } } }),
+    prisma.bankAccount.findMany({ orderBy: { name: "asc" } }),
+  ]);
 
-  const accounts = await prisma.bankAccount.findMany({ orderBy: { name: "asc" } });
-
-  const balances = monthRecord
-    ? await prisma.accountBalance.findMany({ where: { monthId: monthRecord.id } })
-    : [];
-
-  const incomeEntries = monthRecord
-    ? await prisma.incomeEntry.findMany({ where: { monthId: monthRecord.id } })
-    : [];
-
-  const paidTransactions = monthRecord
-    ? await prisma.transaction.findMany({ where: { monthId: monthRecord.id, isPaid: true } })
-    : [];
+  const [balances, incomeEntries, paidTransactions] = await Promise.all([
+    monthRecord
+      ? prisma.accountBalance.findMany({ where: { monthId: monthRecord.id } })
+      : Promise.resolve([]),
+    monthRecord
+      ? prisma.incomeEntry.findMany({
+          where: { monthId: monthRecord.id },
+          select: { actualAmount: true },
+        })
+      : Promise.resolve([]),
+    monthRecord
+      ? prisma.transaction.findMany({
+          where: { monthId: monthRecord.id, isPaid: true },
+          select: { amount: true },
+        })
+      : Promise.resolve([]),
+  ]);
 
   const totalIncome = incomeEntries.reduce((s, e) => s + e.actualAmount, 0);
   const totalPaid = paidTransactions.reduce((s, t) => s + t.amount, 0);

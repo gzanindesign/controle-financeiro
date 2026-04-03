@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/db";
 import { ConfiguracoesClient } from "./ConfiguracoesClient";
 
+export const dynamic = "force-dynamic";
+
 export default async function ConfiguracoesPage() {
   const cards = await prisma.card.findMany({ orderBy: { name: "asc" } });
 

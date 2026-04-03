@@ -1,11 +1,11 @@
 import { prisma } from "./db";
 
 export async function getOrCreateMonth(year: number, month: number) {
-  return prisma.month.upsert({
+  const existing = await prisma.month.findUnique({
     where: { year_month: { year, month } },
-    update: {},
-    create: { year, month },
   });
+  if (existing) return existing;
+  return prisma.month.create({ data: { year, month } });
 }
 
 export function parseMonthParams(searchParams: { mes?: string; ano?: string }) {

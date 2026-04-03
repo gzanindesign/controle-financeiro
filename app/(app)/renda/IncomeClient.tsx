@@ -72,17 +72,24 @@ export function IncomeClient({ entries: initial, month, year, allocation: initia
       year,
     };
 
-    if (modal === "add") {
-      const res = await fetch("/api/income", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      const entry = await res.json();
-      setEntries((p) => [...p, entry]);
-    } else if (modal === "edit" && editing) {
-      await fetch(`/api/income/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      setEntries((p) => p.map((e) => (e.id === editing.id ? { ...e, ...payload } : e)));
+    try {
+      if (modal === "add") {
+        const res = await fetch("/api/income", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await res.text());
+        const entry = await res.json();
+        setEntries((p) => [...p, entry]);
+      } else if (modal === "edit" && editing) {
+        const res = await fetch(`/api/income/${editing.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        if (!res.ok) throw new Error(await res.text());
+        setEntries((p) => p.map((e) => (e.id === editing.id ? { ...e, ...payload } : e)));
+      }
+      setModal(null);
+    } catch (err) {
+      console.error("Erro ao salvar receita:", err);
+      alert("Erro ao salvar. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
-    setModal(null);
   }
 
   function openConfirm(message: string, onConfirm: () => void) {

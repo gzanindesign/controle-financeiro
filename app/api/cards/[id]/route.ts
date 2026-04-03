@@ -20,6 +20,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await prisma.transaction.updateMany({ where: { cardId: id }, data: { cardId: null } });
+  await prisma.subcategory.updateMany({ where: { cardId: id }, data: { cardId: null } });
   await prisma.card.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }

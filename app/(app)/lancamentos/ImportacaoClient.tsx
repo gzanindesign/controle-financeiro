@@ -113,13 +113,13 @@ export function ImportacaoClient({ categories: initialCategories, cards, merchan
     setInlineModal(null);
   }
 
-  function resolveCardId(cardLastDigits?: string | null): string {
-    // Tenta casar pelos últimos 4 dígitos; se não encontrar, usa o primeiro cartão cadastrado
+  function resolveCardId(cardLastDigits?: string | null): string | null {
+    // Casa pelos últimos 4 dígitos; se não encontrar, descarta a transação
     if (cardLastDigits) {
       const byDigits = cards.find((c) => c.name.includes(cardLastDigits));
       if (byDigits) return byDigits.id;
     }
-    return defaultCardId;
+    return null;
   }
 
   function buildRows(
@@ -127,6 +127,7 @@ export function ImportacaoClient({ categories: initialCategories, cards, merchan
     dbDuplicates: Set<string>
   ): ImportRow[] {
     return transactions
+      .filter((t) => resolveCardId(t.card_last_digits) !== null)
       .map((t, i) => {
       const normalize = (s: string) => s.toLowerCase().replace(/\s+/g, "");
       const mapping = mappings.find((m) => normalize(m.merchantCode) === normalize(t.description));
@@ -153,7 +154,7 @@ export function ImportacaoClient({ categories: initialCategories, cards, merchan
         amount: t.amount,
         installmentCurrent: t.installment_current,
         installmentTotal: t.installment_total,
-        cardId: resolveCardId(t.card_last_digits),
+        cardId: resolveCardId(t.card_last_digits) ?? "",
         categoryId: catId,
         subcategoryId: subId,
         selected: !isDuplicate,

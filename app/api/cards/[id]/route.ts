@@ -20,8 +20,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await prisma.transaction.updateMany({ where: { cardId: id }, data: { cardId: null } });
-  await prisma.subcategory.updateMany({ where: { cardId: id }, data: { cardId: null } });
-  await prisma.card.delete({ where: { id } });
+  // Neon HTTP adapter does not support transactions; updateMany triggers one internally.
+  // Use a single CTE statement to clear FK references and delete the card atomically.
+  await prisma.$executeRaw`
+    WITH
+      clear_txs  AS (UPDATE transactions   SET "cardId" = NULL WHERE "cardId" = ${id}),
+      clear_subs AS (UPDATE subcategories  SET "cardId" = NULL WHERE "cardId" = ${id})
+    DELETE FROM cards WHERE id = ${id}
+  `;
   return NextResponse.json({ ok: true });
 }

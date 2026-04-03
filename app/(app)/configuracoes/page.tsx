@@ -7,7 +7,7 @@ export default async function ConfiguracoesPage() {
   return (
     <div className="max-w-3xl mx-auto">
       <h1 className="text-xl font-bold mb-6" style={{ color: "var(--color-text)" }}>
-        Configurações
+        Cartões
       </h1>
       <ConfiguracoesClient
         cards={cards.map((c) => ({ id: c.id, name: c.name, colorHex: c.colorHex, bank: c.bank ?? "", type: c.type }))}

@@ -19,7 +19,7 @@ const navItems = [
   { href: "/categorias", label: "Categorias", icon: Tags },
   { href: "/lancamentos", label: "Lançamentos", icon: CreditCard },
   { href: "/contas", label: "Contas", icon: Landmark },
-  { href: "/configuracoes", label: "Configurações", icon: Settings },
+  { href: "/configuracoes", label: "Cartões", icon: Settings },
 ];
 
 function NavItem({ href, label, Icon, active, monthQuery }: { href: string; label: string; Icon: React.ElementType; active: boolean; monthQuery: string }) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
@@ -24,6 +25,7 @@ const PALETTE = [
 interface CardItem { id: string; name: string; colorHex: string; bank: string; type: string }
 
 export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
+  const router = useRouter();
   const [cards, setCards] = useState(initial);
   const [modal, setModal] = useState<"add" | "edit" | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -45,6 +47,7 @@ export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
       setCards((p) => p.map((c) => c.id === editingId ? { ...c, ...form } : c));
     }
     setLoading(false); setModal(null);
+    router.refresh();
   }
 
   function remove(id: string) {
@@ -53,6 +56,7 @@ export function ConfiguracoesClient({ cards: initial }: { cards: CardItem[] }) {
       onConfirm: async () => {
         await fetch(`/api/cards/${id}`, { method: "DELETE" });
         setCards((p) => p.filter((c) => c.id !== id));
+        router.refresh();
       },
     });
   }

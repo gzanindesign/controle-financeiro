@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, Thead, Tbody, Th, Td, TotalRow } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function CategoriasClient({ categories: initial, cards, month, year }: Props) {
+  const router = useRouter();
   const [categories, setCategories] = useState(initial);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
   const [modal, setModal] = useState<"cat" | "sub" | "editSub" | null>(null);
@@ -70,6 +72,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
     const cat = await res.json();
     setCategories((p) => [...p, { ...cat, subcategories: [] }]);
     setLoading(false); setModal(null);
+    router.refresh();
   }
 
   async function saveSub() {
@@ -89,6 +92,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
     const card = cards.find((c) => c.id === sub.cardId) ?? null;
     setCategories((p) => p.map((c) => c.id === targetCatId ? { ...c, subcategories: [...c.subcategories, { ...sub, card, budget: budgetValue, actual: 0, paid: 0 }] } : c));
     setLoading(false); setModal(null);
+    router.refresh();
   }
 
   async function saveEditSub() {
@@ -106,12 +110,14 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
       subcategories: cat.subcategories.map((s) => s.id === editingSub.id ? { ...s, ...payload, card, budget: budgetValue } : s),
     })));
     setLoading(false); setModal(null); setEditingSub(null);
+    router.refresh();
   }
 
   function deleteCat(id: string) {
     openConfirm("Tem certeza que deseja remover esta categoria e todas as suas subcategorias?", async () => {
       await fetch(`/api/categories/${id}`, { method: "DELETE" });
       setCategories((p) => p.filter((c) => c.id !== id));
+      router.refresh();
     });
   }
 
@@ -119,6 +125,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
     openConfirm("Tem certeza que deseja remover esta subcategoria?", async () => {
       await fetch(`/api/subcategories/${subId}`, { method: "DELETE" });
       setCategories((p) => p.map((c) => c.id === catId ? { ...c, subcategories: c.subcategories.filter((s) => s.id !== subId) } : c));
+      router.refresh();
     });
   }
 

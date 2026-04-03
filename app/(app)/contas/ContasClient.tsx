@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, Thead, Tbody, Th, Td, TotalRow } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function ContasClient({ accounts: initial, totalIncome, totalPaid, month, year }: Props) {
+  const router = useRouter();
   const [accounts, setAccounts] = useState(initial);
   const [modal, setModal] = useState<"add" | "balance" | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -38,6 +40,7 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
     const acc = await res.json();
     setAccounts((p) => [...p, { ...acc, balance: 0 }]);
     setLoading(false); setModal(null);
+    router.refresh();
   }
 
   function openBalance(id: string) {
@@ -51,6 +54,7 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
     await fetch("/api/balances", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accountId: editingId, balance: parseFloat(form.balance) || 0, month, year }) });
     setAccounts((p) => p.map((a) => a.id === editingId ? { ...a, balance: parseFloat(form.balance) || 0 } : a));
     setLoading(false); setModal(null);
+    router.refresh();
   }
 
   function remove(id: string) {
@@ -59,6 +63,7 @@ export function ContasClient({ accounts: initial, totalIncome, totalPaid, month,
       onConfirm: async () => {
         await fetch(`/api/accounts/${id}`, { method: "DELETE" });
         setAccounts((p) => p.filter((a) => a.id !== id));
+        router.refresh();
       },
     });
   }

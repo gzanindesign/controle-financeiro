@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, Thead, Tbody, Th, Td, TotalRow } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
@@ -35,6 +36,7 @@ const KIND_COLORS = {
 };
 
 export function IncomeClient({ entries: initial, month, year, allocation: initialAllocation, spendingByKind }: Props) {
+  const router = useRouter();
   const [entries, setEntries] = useState(initial);
   const [modal, setModal] = useState<"add" | "edit" | null>(null);
   const [editing, setEditing] = useState<IncomeEntry | null>(null);
@@ -84,6 +86,7 @@ export function IncomeClient({ entries: initial, month, year, allocation: initia
         setEntries((p) => p.map((e) => (e.id === editing.id ? { ...e, ...payload } : e)));
       }
       setModal(null);
+      router.refresh();
     } catch (err) {
       console.error("Erro ao salvar receita:", err);
       alert("Erro ao salvar. Tente novamente.");
@@ -100,6 +103,7 @@ export function IncomeClient({ entries: initial, month, year, allocation: initia
     openConfirm("Tem certeza que deseja remover esta receita?", async () => {
       await fetch(`/api/income/${id}`, { method: "DELETE" });
       setEntries((p) => p.filter((e) => e.id !== id));
+      router.refresh();
     });
   }
 
@@ -112,6 +116,7 @@ export function IncomeClient({ entries: initial, month, year, allocation: initia
     setAlloc(allocDraft);
     setAllocSaving(false);
     setAllocEditing(false);
+    router.refresh();
   }
 
   const kinds = ["ESSENTIAL", "FREE", "INVESTMENT"] as const;

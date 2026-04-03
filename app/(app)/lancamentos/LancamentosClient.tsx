@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Table, Thead, Tbody, Th, Td } from "@/components/ui/Table";
 import { Button } from "@/components/ui/Button";
@@ -63,6 +64,7 @@ const PALETTE = [
 ];
 
 export function LancamentosClient({ transactions: initial, cards, categories: initialCategories, month, year, merchantMappings }: Props) {
+  const router = useRouter();
   const [viewMode, setViewMode] = useState<"manual" | "import">("manual");
   const [txs, setTxs] = useState(initial);
   const [categories, setCategories] = useState(initialCategories);
@@ -155,12 +157,14 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
         onConfirm: async () => {
           await fetch(`/api/transactions/${t.id}?scope=single`, { method: "DELETE" });
           setTxs((p) => p.filter((x) => x.id !== t.id));
+          router.refresh();
         },
         extraAction: {
           label: "Este e os seguintes",
           onClick: async () => {
             await fetch(`/api/transactions/${t.id}?scope=future`, { method: "DELETE" });
             setTxs((p) => p.filter((x) => x.id !== t.id));
+            router.refresh();
             setConfirmModal(null);
           },
         },
@@ -172,6 +176,7 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
         onConfirm: async () => {
           await fetch(`/api/transactions/${t.id}`, { method: "DELETE" });
           setTxs((p) => p.filter((x) => x.id !== t.id));
+          router.refresh();
         },
       });
     }
@@ -183,6 +188,7 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
       body: JSON.stringify({ cardId, month, year, paid }),
     });
     setTxs((p) => p.map((t) => t.card?.id === cardId ? { ...t, isPaid: paid } : t));
+    router.refresh();
   }
 
   async function save() {
@@ -203,6 +209,7 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
     const sub = cat?.subcategories.find((s) => s.id === newTx.subcategoryId) ?? null;
     setTxs((p) => [...p, { ...newTx, card, subcategory: sub && cat ? { id: sub.id, name: sub.name, category: { name: cat.name } } : null }]);
     setLoading(false); setModal(null);
+    router.refresh();
   }
 
   async function doSaveEdit(scope: "single" | "future") {
@@ -236,6 +243,7 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
       } : t));
     }
     setLoading(false); setModal(null); setEditingTx(null);
+    router.refresh();
   }
 
   async function saveEdit() {
@@ -444,6 +452,7 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
                     body: JSON.stringify({ month, year }),
                   });
                   setTxs([]);
+                  router.refresh();
                 },
               })} style={{ color: "var(--color-danger)" }}>
                 <Trash2 size={14} className="inline mr-1" />Excluir todos

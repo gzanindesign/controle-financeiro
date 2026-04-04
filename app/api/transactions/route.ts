@@ -74,14 +74,13 @@ export async function POST(req: NextRequest) {
         const yRef = year + Math.floor((month - 1 + i) / 12);
         const monthRecord = await getOrCreateMonth(yRef, mRef);
 
-        const dateMonth = ((origMonth - 1 + i) % 12) + 1;
-        const dateYear = origYear + Math.floor((origMonth - 1 + i) / 12);
-
+        // Mantém a data original da compra em todas as parcelas
+        // (não avança a data mês a mês como era antes)
         const t = await prisma.transaction.create({
           data: {
             ...baseData,
             monthId: monthRecord.id,
-            date: new Date(dateYear, dateMonth - 1, origDay),
+            date: new Date(origYear, origMonth - 1, origDay),
             type,
             installmentCurrent: startAt + i,
             installmentTotal,

@@ -273,3 +273,28 @@ model PlanningConfig {
 
   @@map("planning_config")
 }
+
+// ─── Pagamentos Recorrentes ───────────────────────────────────────────────────
+model RecurringPayment {
+  id          String   @id @default(cuid())
+  description String
+  dueDay      Int
+  createdAt   DateTime @default(now())
+
+  statuses RecurringPaymentStatus[]
+
+  @@map("recurring_payments")
+}
+
+model RecurringPaymentStatus {
+  id        String  @id @default(cuid())
+  paymentId String
+  month     Int
+  year      Int
+  isPaid    Boolean @default(false)
+
+  payment RecurringPayment @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@unique([paymentId, month, year])
+  @@map("recurring_payment_statuses")
+}

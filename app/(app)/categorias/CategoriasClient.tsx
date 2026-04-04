@@ -44,8 +44,9 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
   const router = useRouter();
   const [categories, setCategories] = useState(initial);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
-  const [modal, setModal] = useState<"cat" | "sub" | "editSub" | null>(null);
+  const [modal, setModal] = useState<"cat" | "editCat" | "sub" | "editSub" | null>(null);
   const [targetCatId, setTargetCatId] = useState<string>("");
+  const [editingCat, setEditingCat] = useState<Category | null>(null);
   const [editingSub, setEditingSub] = useState<Subcategory | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -63,8 +64,19 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
   function toggle(id: string) { setCollapsed((p) => ({ ...p, [id]: !p[id] })); }
 
   function openAddCat() { setForm({ name: "", icon: "Tag", color: "#6366f1" }); setModal("cat"); }
+  function openEditCat(cat: Category) { setEditingCat(cat); setForm({ name: cat.name, icon: cat.icon || "Tag", color: cat.color || "#6366f1" }); setModal("editCat"); }
   function openAddSub(catId: string) { setTargetCatId(catId); setForm({ name: "", dueDay: "", paymentMethod: "CREDIT", cardId: "", budgetAmount: "", kind: "ESSENTIAL" }); setModal("sub"); }
   function openEditSub(sub: Subcategory) { setEditingSub(sub); setForm({ name: sub.name, dueDay: sub.dueDay ? String(sub.dueDay) : "", paymentMethod: sub.paymentMethod, cardId: sub.cardId ?? "", kind: sub.kind ?? "ESSENTIAL", budgetAmount: String(sub.budget) }); setModal("editSub"); }
+
+  async function saveEditCat() {
+    if (!editingCat) return;
+    setLoading(true);
+    const payload = { name: form.name, icon: form.icon || "Tag", color: form.color || "#6366f1" };
+    await fetch(`/api/categories/${editingCat.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    setCategories((p) => p.map((c) => c.id === editingCat.id ? { ...c, ...payload } : c));
+    setLoading(false); setModal(null); setEditingCat(null);
+    router.refresh();
+  }
 
   async function saveCat() {
     setLoading(true);
@@ -161,6 +173,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
                   Teto: {formatCurrency(catBudget)} | Atual: {formatCurrency(catActual)} | Pago: {formatCurrency(catPaid)}
                 </span>
                 <Button size="sm" onClick={() => openAddSub(cat.id)}><Plus size={12} className="inline mr-1" />Sub</Button>
+                <button onClick={() => openEditCat(cat)} className="p-1 rounded hover:opacity-70" style={{ color: "var(--color-text-muted)" }}><Pencil size={16} /></button>
                 <button onClick={() => deleteCat(cat.id)} className="p-1 rounded hover:opacity-70" style={{ color: "var(--color-danger)" }}><Trash2 size={16} /></button>
               </div>
             </div>
@@ -170,8 +183,6 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
                 <colgroup>
                   <col />
                   <col style={{ width: 100 }} />
-                  <col style={{ width: 120 }} />
-                  <col style={{ width: 80 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 110 }} />
                   <col style={{ width: 110 }} />
@@ -182,8 +193,6 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
                   <tr>
                     <Th>Subcategoria</Th>
                     <Th>Tipo</Th>
-                    <Th>Meio</Th>
-                    <Th>Venc.</Th>
                     <Th className="text-right">Orçamento</Th>
                     <Th className="text-right">Atual</Th>
                     <Th className="text-right">Pago</Th>
@@ -193,7 +202,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
                 </Thead>
                 <Tbody>
                   {cat.subcategories.length === 0 && (
-                    <tr><Td colSpan={9} className="text-center py-4" style={{ color: "var(--color-text-muted)" }}>Nenhuma subcategoria</Td></tr>
+                    <tr><Td colSpan={7} className="text-center py-4" style={{ color: "var(--color-text-muted)" }}>Nenhuma subcategoria</Td></tr>
                   )}
                   {cat.subcategories.map((sub) => {
                     const diff = sub.budget - sub.actual;
@@ -206,14 +215,6 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
                           {sub.kind === "INVESTMENT" && <span className="px-2 py-0.5 rounded-full text-xs font-medium" style={{ backgroundColor: "rgba(245,158,11,0.15)", color: "#f59e0b" }}>Investimento</span>}
                           {!sub.kind && <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>—</span>}
                         </Td>
-                        <Td>
-                          {sub.paymentMethod === "CREDIT" && sub.card ? (
-                            <span className="px-2 py-0.5 rounded text-xs text-white" style={{ backgroundColor: sub.card.colorHex }}>{sub.card.name}</span>
-                          ) : (
-                            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>Débito</span>
-                          )}
-                        </Td>
-                        <Td>{sub.dueDay ? `Dia ${sub.dueDay}` : "—"}</Td>
                         <Td className="text-right">{formatCurrency(sub.budget)}</Td>
                         <Td className="text-right">{formatCurrency(sub.actual)}</Td>
                         <Td className="text-right">{formatCurrency(sub.paid)}</Td>
@@ -234,7 +235,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
                   <tfoot>
                     <TotalRow>
                       <Td className="font-semibold">Subtotal</Td>
-                      <Td /><Td /><Td />
+                      <Td />
                       <Td className="text-right font-semibold">{formatCurrency(catBudget)}</Td>
                       <Td className="text-right font-semibold">{formatCurrency(catActual)}</Td>
                       <Td className="text-right font-semibold">{formatCurrency(catPaid)}</Td>
@@ -257,8 +258,6 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
             <colgroup>
               <col />
               <col style={{ width: 100 }} />
-              <col style={{ width: 120 }} />
-              <col style={{ width: 80 }} />
               <col style={{ width: 110 }} />
               <col style={{ width: 110 }} />
               <col style={{ width: 110 }} />
@@ -268,7 +267,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
             <tfoot>
               <TotalRow>
                 <Td className="font-bold text-base">Total Geral</Td>
-                <Td /><Td /><Td />
+                <Td />
                 <Td className="text-right font-bold">{formatCurrency(grandTotal.budget)}</Td>
                 <Td className="text-right font-bold">{formatCurrency(grandTotal.actual)}</Td>
                 <Td className="text-right font-bold">{formatCurrency(grandTotal.paid)}</Td>
@@ -321,27 +320,48 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
         </div>
       </Modal>
 
+      {/* Modal: Editar Categoria */}
+      <Modal open={modal === "editCat"} onClose={() => { setModal(null); setEditingCat(null); }} title={`Editar — ${editingCat?.name}`} width="520px">
+        <div className="flex flex-col gap-4">
+          <div><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
+          <div>
+            <Label>Cor</Label>
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              {PALETTE.map(({ hex, label }) => (
+                <button key={hex} title={label} onClick={() => setForm((p) => ({ ...p, color: hex }))} className="transition-transform hover:scale-110"
+                  style={{ width: 28, height: 28, borderRadius: "50%", backgroundColor: hex, flexShrink: 0, outline: form.color === hex ? `3px solid ${hex}` : "3px solid transparent", outlineOffset: 2 }}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Ícone</Label>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="flex items-center justify-center rounded-lg" style={{ width: 36, height: 36, backgroundColor: `${form.color || "#6366f1"}22` }}>
+                <CategoryIcon name={form.icon || "Tag"} size={18} color={form.color || "#6366f1"} />
+              </div>
+              <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>{form.icon || "Tag"}</span>
+            </div>
+            <IconPicker value={form.icon || "Tag"} onChange={(icon) => setForm((p) => ({ ...p, icon }))} />
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="ghost" onClick={() => { setModal(null); setEditingCat(null); }}>Cancelar</Button>
+            <Button variant="primary" onClick={saveEditCat} disabled={loading || !form.name}>Salvar</Button>
+          </div>
+        </div>
+      </Modal>
+
       {/* Modal: Nova Subcategoria */}
       <Modal open={modal === "sub"} onClose={() => setModal(null)} title="Nova Subcategoria">
         <div className="flex flex-col gap-4">
           <div><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Meio de Pagamento</Label>
-              <SelectWithNew
-                value={form.paymentMethod}
-                onChange={(v) => setForm((p) => ({ ...p, paymentMethod: v }))}
-                options={[{ value: "CREDIT", label: "Cartão de Crédito" }, { value: "DEBIT", label: "Débito / Conta" }]}
-              />
-            </div>
-            <div>
-              <Label>Tipo de Gasto</Label>
-              <SelectWithNew
-                value={form.kind}
-                onChange={(v) => setForm((p) => ({ ...p, kind: v }))}
-                options={[{ value: "ESSENTIAL", label: "Essencial" }, { value: "FREE", label: "Livre" }, { value: "INVESTMENT", label: "Investimento" }]}
-              />
-            </div>
+          <div>
+            <Label>Tipo de Gasto</Label>
+            <SelectWithNew
+              value={form.kind}
+              onChange={(v) => setForm((p) => ({ ...p, kind: v }))}
+              options={[{ value: "ESSENTIAL", label: "Essencial" }, { value: "FREE", label: "Livre" }, { value: "INVESTMENT", label: "Investimento" }]}
+            />
           </div>
           <div>
             <Label>Teto do Orçamento</Label>
@@ -358,23 +378,13 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
       <Modal open={modal === "editSub"} onClose={() => { setModal(null); setEditingSub(null); }} title={`Editar — ${editingSub?.name}`}>
         <div className="flex flex-col gap-4">
           <div><Label>Nome</Label><Input value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label>Meio de Pagamento</Label>
-              <SelectWithNew
-                value={form.paymentMethod}
-                onChange={(v) => setForm((p) => ({ ...p, paymentMethod: v }))}
-                options={[{ value: "CREDIT", label: "Cartão de Crédito" }, { value: "DEBIT", label: "Débito / Conta" }]}
-              />
-            </div>
-            <div>
-              <Label>Tipo de Gasto</Label>
-              <SelectWithNew
-                value={form.kind}
-                onChange={(v) => setForm((p) => ({ ...p, kind: v }))}
-                options={[{ value: "ESSENTIAL", label: "Essencial" }, { value: "FREE", label: "Livre" }, { value: "INVESTMENT", label: "Investimento" }]}
-              />
-            </div>
+          <div>
+            <Label>Tipo de Gasto</Label>
+            <SelectWithNew
+              value={form.kind}
+              onChange={(v) => setForm((p) => ({ ...p, kind: v }))}
+              options={[{ value: "ESSENTIAL", label: "Essencial" }, { value: "FREE", label: "Livre" }, { value: "INVESTMENT", label: "Investimento" }]}
+            />
           </div>
           <div>
             <Label>Teto do Orçamento (R$)</Label>

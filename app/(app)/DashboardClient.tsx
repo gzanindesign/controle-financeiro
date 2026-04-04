@@ -30,6 +30,7 @@ interface Props {
   allocation: Allocation;
   spendingByKind: SpendingByKind;
   categoryCards: CategoryCard[];
+  upcomingPayments: { id: string; description: string; dueDay: number; daysUntilDue: number }[];
 }
 
 const KINDS = [
@@ -79,7 +80,7 @@ function BudgetBar({ budget, actual, showLabel = false, height = 10 }: { budget:
   );
 }
 
-export function DashboardClient({ income, expenses, lastUpdatedAt, closedAt, hasIncome, monthId, month, year, totalAccountBalance, allocation, spendingByKind, categoryCards }: Props) {
+export function DashboardClient({ income, expenses, lastUpdatedAt, closedAt, hasIncome, monthId, month, year, totalAccountBalance, allocation, spendingByKind, categoryCards, upcomingPayments }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -189,6 +190,27 @@ export function DashboardClient({ income, expenses, lastUpdatedAt, closedAt, has
 
   return (
     <>
+      {upcomingPayments.length > 0 && (
+        <div className="mb-5 rounded-xl p-4" style={{ backgroundColor: "rgba(234,179,8,0.1)", border: "1px solid rgba(234,179,8,0.3)" }}>
+          <div className="flex items-center gap-2 mb-2">
+            <span style={{ color: "#ca8a04", fontSize: 16 }}>⚠️</span>
+            <span className="text-sm font-semibold" style={{ color: "#ca8a04" }}>
+              {upcomingPayments.length === 1 ? "1 pagamento vence nos próximos 3 dias" : `${upcomingPayments.length} pagamentos vencem nos próximos 3 dias`}
+            </span>
+          </div>
+          <ul className="flex flex-col gap-1">
+            {upcomingPayments.map((p) => (
+              <li key={p.id} className="flex items-center justify-between text-sm">
+                <span style={{ color: "var(--color-text)" }}>{p.description}</span>
+                <span className="text-xs font-medium" style={{ color: p.daysUntilDue === 0 ? "var(--color-danger)" : "#ca8a04" }}>
+                  {p.daysUntilDue === 0 ? "Vence hoje" : `Vence em ${p.daysUntilDue} dia${p.daysUntilDue > 1 ? "s" : ""}`}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>

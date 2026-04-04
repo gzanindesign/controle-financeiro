@@ -11,9 +11,8 @@ export async function DELETE(req: NextRequest) {
     });
     if (!monthRecord) return NextResponse.json({ deleted: 0 });
 
-    const { count } = await prisma.transaction.deleteMany({
-      where: { monthId: monthRecord.id },
-    });
+    // deleteMany triggers internal transaction — use raw SQL instead.
+    const count = await prisma.$executeRaw`DELETE FROM transactions WHERE "monthId" = ${monthRecord.id}`;
 
     return NextResponse.json({ deleted: count });
   } catch (err) {

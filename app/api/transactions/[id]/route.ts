@@ -27,6 +27,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (!tx) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Atualiza este mês + todos os seguintes do mesmo grupo
+  // updateMany triggers internal transaction — not supported by Neon HTTP adapter.
+  // Find matching IDs then update each individually.
   if (scope === "future" && tx.groupId) {
     const futureMths = await prisma.month.findMany({
       where: {
@@ -37,10 +39,13 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
       },
     });
     const monthIds = futureMths.map((m) => m.id);
-    await prisma.transaction.updateMany({
+    const txsToUpdate = await prisma.transaction.findMany({
       where: { groupId: tx.groupId, monthId: { in: monthIds } },
-      data,
+      select: { id: true },
     });
+    for (const { id: txId } of txsToUpdate) {
+      await prisma.transaction.update({ where: { id: txId }, data });
+    }
     return NextResponse.json({ ok: true });
   }
 
@@ -60,6 +65,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   if (!tx) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Exclui este mês + todos os seguintes do mesmo grupo
+  // deleteMany triggers internal transaction — use raw SQL instead.
   if (scope === "future" && tx.groupId) {
     const futureMths = await prisma.month.findMany({
       where: {
@@ -70,9 +76,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
       },
     });
     const monthIds = futureMths.map((m) => m.id);
-    await prisma.transaction.deleteMany({
-      where: { groupId: tx.groupId, monthId: { in: monthIds } },
-    });
+    if (monthIds.length > 0) {
+      for (const monthId of monthIds) {
+        await prisma.$executeRaw`DELETE FROM transactions WHERE "groupId" = ${tx.groupId} AND "monthId" = ${monthId}`;
+      }
+    }
     return NextResponse.json({ ok: true });
   }
 

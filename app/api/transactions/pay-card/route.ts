@@ -20,10 +20,11 @@ export async function POST(req: NextRequest) {
   });
   if (!monthRecord) return NextResponse.json({ error: "Mês não encontrado" }, { status: 404 });
 
-  await prisma.transaction.updateMany({
-    where: { cardId, monthId: monthRecord.id },
-    data: { isPaid: paid },
-  });
+  // updateMany triggers an internal transaction — not supported by Neon HTTP adapter.
+  await prisma.$executeRaw`
+    UPDATE transactions SET "isPaid" = ${paid}
+    WHERE "cardId" = ${cardId} AND "monthId" = ${monthRecord.id}
+  `;
 
   return NextResponse.json({ ok: true });
 }

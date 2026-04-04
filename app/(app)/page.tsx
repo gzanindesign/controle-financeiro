@@ -34,6 +34,33 @@ export default async function DashboardPage({
     monthRecord ? prisma.accountBalance.findMany({ where: { monthId: monthRecord.id }, select: { balance: true } }) : [],
   ]);
 
+  // Fetch recurring payments due within 3 days this month (not paid)
+  const today2 = new Date();
+  const currentMonth = today2.getMonth() + 1;
+  const currentYear = today2.getFullYear();
+  const todayDay = today2.getDate();
+  const threeDaysLater = todayDay + 3;
+
+  const allRecurring = await prisma.recurringPayment.findMany({
+    orderBy: { dueDay: "asc" },
+    include: {
+      statuses: { where: { month: currentMonth, year: currentYear } },
+    },
+  });
+
+  const upcomingPayments = allRecurring
+    .filter((p) => {
+      const isPaid = p.statuses[0]?.isPaid ?? false;
+      if (isPaid) return false;
+      return p.dueDay >= todayDay && p.dueDay <= threeDaysLater;
+    })
+    .map((p) => ({
+      id: p.id,
+      description: p.description,
+      dueDay: p.dueDay,
+      daysUntilDue: p.dueDay - todayDay,
+    }));
+
   const income = {
     budget: incomeEntries.reduce((s, e) => s + e.expectedAmount, 0),
     actual: incomeEntries.reduce((s, e) => s + e.actualAmount, 0),
@@ -98,6 +125,7 @@ export default async function DashboardPage({
           allocation={allocation}
           spendingByKind={spendingByKind}
           categoryCards={categoryCards}
+          upcomingPayments={upcomingPayments}
         />
       </Suspense>
     </div>

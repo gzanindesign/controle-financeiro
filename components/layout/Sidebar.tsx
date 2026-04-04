@@ -9,6 +9,7 @@ import {
   CreditCard,
   Landmark,
   Settings,
+  Bell,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { useState, Suspense } from "react";
@@ -19,6 +20,7 @@ const navItems = [
   { href: "/categorias", label: "Categorias", icon: Tags },
   { href: "/lancamentos", label: "Lançamentos", icon: CreditCard },
   { href: "/contas", label: "Contas", icon: Landmark },
+  { href: "/pagamentos", label: "Pagamentos", icon: Bell },
   { href: "/configuracoes", label: "Cartões", icon: Settings },
 ];
 

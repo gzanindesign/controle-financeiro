@@ -39,6 +39,7 @@ interface ImportRow {
   cardId: string;
   categoryId: string;
   subcategoryId: string;
+  originalSubcategoryId: string;
   selected: boolean;
   rememberMerchant: boolean;
   isMapped: boolean;
@@ -157,6 +158,7 @@ export function ImportacaoClient({ categories: initialCategories, cards, merchan
         cardId: resolveCardId(t.card_last_digits) ?? "",
         categoryId: catId,
         subcategoryId: subId,
+        originalSubcategoryId: subId,
         selected: !isDuplicate,
         rememberMerchant: false,
         isMapped: !!mapping,
@@ -481,19 +483,36 @@ export function ImportacaoClient({ categories: initialCategories, cards, merchan
                       </div>
                     </div>
 
-                    {/* Lembrar estabelecimento */}
-                    {!row.isMapped && row.subcategoryId && (
-                      <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
-                        <input
-                          type="checkbox"
-                          checked={row.rememberMerchant}
-                          onChange={(e) => updateRow(row.tempId, { rememberMerchant: e.target.checked })}
-                          style={{ accentColor: "var(--color-primary)" }}
-                        />
-                        <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                          Lembrar este estabelecimento para próximas faturas
-                        </span>
-                      </label>
+                    {/* Lembrar / atualizar mapeamento */}
+                    {row.subcategoryId && !row.isDuplicate && (
+                      <>
+                        {!row.isMapped && (
+                          <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
+                            <input
+                              type="checkbox"
+                              checked={row.rememberMerchant}
+                              onChange={(e) => updateRow(row.tempId, { rememberMerchant: e.target.checked })}
+                              style={{ accentColor: "var(--color-primary)" }}
+                            />
+                            <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
+                              Lembrar este estabelecimento para próximas faturas
+                            </span>
+                          </label>
+                        )}
+                        {row.isMapped && row.subcategoryId !== row.originalSubcategoryId && (
+                          <label className="flex items-center gap-2 mt-2 cursor-pointer w-fit">
+                            <input
+                              type="checkbox"
+                              checked={row.rememberMerchant}
+                              onChange={(e) => updateRow(row.tempId, { rememberMerchant: e.target.checked })}
+                              style={{ accentColor: "var(--color-primary)" }}
+                            />
+                            <span className="text-xs" style={{ color: "var(--color-primary)" }}>
+                              Atualizar mapeamento deste estabelecimento
+                            </span>
+                          </label>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -430,17 +430,21 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
       )}
 
       <Card>
-        <CardHeader>
-          <Tabs
-            value={activeTab}
-            onChange={(id) => { setActiveTab(id); }}
-            items={[
-              { id: "all", label: "Todos" },
-              { id: "debit", label: "Débito" },
-              ...cards.map((c) => ({ id: c.id, label: c.name, color: c.colorHex })),
-            ]}
-          />
-          <div className="flex items-center gap-4">
+        <div className="mb-4" style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", rowGap: "10px" }}>
+          {/* Chips de filtro — podem quebrar linha */}
+          <div style={{ flex: "1 1 auto", minWidth: 0 }}>
+            <Tabs
+              value={activeTab}
+              onChange={(id) => { setActiveTab(id); }}
+              items={[
+                { id: "all", label: "Todos" },
+                { id: "debit", label: "Débito" },
+                ...cards.map((c) => ({ id: c.id, label: c.name, color: c.colorHex })),
+              ]}
+            />
+          </div>
+          {/* Botões — sempre na mesma linha, nunca quebram */}
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0, whiteSpace: "nowrap" }}>
             {txs.length > 0 && (
               <Button variant="ghost" size="sm" onClick={() => setConfirmModal({
                 title: "Excluir todos os lançamentos",
@@ -460,7 +464,7 @@ export function LancamentosClient({ transactions: initial, cards, categories: in
             )}
             <Button variant="primary" size="sm" onClick={openNew}><Plus size={14} className="inline mr-1" />Adicionar</Button>
           </div>
-        </CardHeader>
+        </div>
 
         <Table>
           <Thead>

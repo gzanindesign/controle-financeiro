@@ -36,33 +36,36 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Propaga o orçamento para todos os meses futuros que já existem no banco.
-  // Atualiza registros existentes E cria novos — nunca toca em meses anteriores.
+  // Propaga para meses futuros existentes: busca tudo em 2 queries, depois paralela
   if (applyToFuture) {
-    const futureMonths = await prisma.month.findMany({
+    // 1 query: todos os meses futuros com seus orçamentos para esta subcategoria
+    const futureMonthsWithBudgets = await prisma.month.findMany({
       where: {
         OR: [
           { year: { gt: year } },
           { year, month: { gt: month } },
         ],
       },
+      include: {
+        subcategoryBudgets: { where: { subcategoryId } },
+      },
     });
 
-    for (const fm of futureMonths) {
-      const existingFuture = await prisma.subcategoryBudget.findUnique({
-        where: { subcategoryId_monthId: { subcategoryId, monthId: fm.id } },
-      });
-      if (existingFuture) {
-        await prisma.subcategoryBudget.update({
-          where: { id: existingFuture.id },
-          data: { budgetAmount },
-        });
-      } else {
-        await prisma.subcategoryBudget.create({
+    // Atualiza/cria todos em paralelo
+    await Promise.all(
+      futureMonthsWithBudgets.map((fm) => {
+        const existing = fm.subcategoryBudgets[0];
+        if (existing) {
+          return prisma.subcategoryBudget.update({
+            where: { id: existing.id },
+            data: { budgetAmount },
+          });
+        }
+        return prisma.subcategoryBudget.create({
           data: { subcategoryId, monthId: fm.id, budgetAmount, paidAmount: 0 },
         });
-      }
-    }
+      })
+    );
   }
 
   return NextResponse.json(budget);

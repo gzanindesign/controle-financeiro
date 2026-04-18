@@ -8,7 +8,7 @@ export async function getOrCreateMonth(year: number, month: number) {
 
   const newMonth = await prisma.month.create({ data: { year, month } });
 
-  // Copia orçamentos do mês anterior para o novo mês
+  // Copia orçamentos do mês anterior em paralelo
   const prevMonth = month === 1 ? 12 : month - 1;
   const prevYear = month === 1 ? year - 1 : year;
   const prevMonthRecord = await prisma.month.findUnique({
@@ -19,16 +19,19 @@ export async function getOrCreateMonth(year: number, month: number) {
     const prevBudgets = await prisma.subcategoryBudget.findMany({
       where: { monthId: prevMonthRecord.id },
     });
-    for (const b of prevBudgets) {
-      await prisma.subcategoryBudget.create({
-        data: {
-          subcategoryId: b.subcategoryId,
-          monthId: newMonth.id,
-          budgetAmount: b.budgetAmount,
-          paidAmount: 0,
-        },
-      });
-    }
+    // Cria todos os orçamentos em paralelo em vez de sequencial
+    await Promise.all(
+      prevBudgets.map((b) =>
+        prisma.subcategoryBudget.create({
+          data: {
+            subcategoryId: b.subcategoryId,
+            monthId: newMonth.id,
+            budgetAmount: b.budgetAmount,
+            paidAmount: 0,
+          },
+        })
+      )
+    );
   }
 
   return newMonth;

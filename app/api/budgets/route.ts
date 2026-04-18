@@ -9,20 +9,61 @@ const schema = z.object({
   year: z.number().int().min(2000),
   budgetAmount: z.number().nonnegative(),
   paidAmount: z.number().nonnegative().optional(),
+  applyToFuture: z.boolean().optional().default(false),
 });
 
 export async function POST(req: NextRequest) {
   const parsed = schema.safeParse(await req.json());
   if (!parsed.success) return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 });
 
-  const { subcategoryId, month, year, budgetAmount, paidAmount } = parsed.data;
+  const { subcategoryId, month, year, budgetAmount, paidAmount, applyToFuture } = parsed.data;
   const monthRecord = await getOrCreateMonth(year, month);
 
-  const budget = await prisma.subcategoryBudget.upsert({
+  // Substituído upsert por find+create/update para compatibilidade com Neon HTTP adapter
+  const existing = await prisma.subcategoryBudget.findUnique({
     where: { subcategoryId_monthId: { subcategoryId, monthId: monthRecord.id } },
-    update: { budgetAmount, ...(paidAmount !== undefined && { paidAmount }) },
-    create: { subcategoryId, monthId: monthRecord.id, budgetAmount, paidAmount: paidAmount ?? 0 },
   });
+
+  let budget;
+  if (existing) {
+    budget = await prisma.subcategoryBudget.update({
+      where: { id: existing.id },
+      data: { budgetAmount, ...(paidAmount !== undefined && { paidAmount }) },
+    });
+  } else {
+    budget = await prisma.subcategoryBudget.create({
+      data: { subcategoryId, monthId: monthRecord.id, budgetAmount, paidAmount: paidAmount ?? 0 },
+    });
+  }
+
+  // Propaga o orçamento para todos os meses futuros que já existem no banco.
+  // Atualiza registros existentes E cria novos — nunca toca em meses anteriores.
+  if (applyToFuture) {
+    const futureMonths = await prisma.month.findMany({
+      where: {
+        OR: [
+          { year: { gt: year } },
+          { year, month: { gt: month } },
+        ],
+      },
+    });
+
+    for (const fm of futureMonths) {
+      const existingFuture = await prisma.subcategoryBudget.findUnique({
+        where: { subcategoryId_monthId: { subcategoryId, monthId: fm.id } },
+      });
+      if (existingFuture) {
+        await prisma.subcategoryBudget.update({
+          where: { id: existingFuture.id },
+          data: { budgetAmount },
+        });
+      } else {
+        await prisma.subcategoryBudget.create({
+          data: { subcategoryId, monthId: fm.id, budgetAmount, paidAmount: 0 },
+        });
+      }
+    }
+  }
 
   return NextResponse.json(budget);
 }

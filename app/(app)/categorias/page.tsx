@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { parseMonthParams } from "@/lib/month";
+import { parseMonthParams, getOrCreateMonth } from "@/lib/month";
 import { CategoriasClient } from "./CategoriasClient";
 
 export default async function CategoriasPage({
@@ -10,16 +10,8 @@ export default async function CategoriasPage({
   const params = await searchParams;
   const { month, year } = parseMonthParams(params);
 
-  const now = new Date();
-  const isFuture = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth() + 1);
-
-  const monthRecord = await prisma.month.findUnique({
-    where: { year_month: { year, month } },
-  });
-
-  const txWhere = monthRecord
-    ? { monthId: monthRecord.id, ...(isFuture ? { type: { in: ["FIXED", "INSTALLMENT"] as ("FIXED" | "INSTALLMENT")[] } } : {}) }
-    : undefined;
+  // Garante que o mês existe e copia orçamentos do mês anterior se necessário
+  const monthRecord = await getOrCreateMonth(year, month);
 
   const [categories, cards] = await Promise.all([
     prisma.category.findMany({
@@ -27,8 +19,8 @@ export default async function CategoriasPage({
         subcategories: {
           include: {
             card: true,
-            budgets: monthRecord ? { where: { monthId: monthRecord.id } } : false,
-            transactions: txWhere ? { where: txWhere } : false,
+            budgets: { where: { monthId: monthRecord.id } },
+            transactions: { where: { monthId: monthRecord.id } },
           },
         },
       },
@@ -46,7 +38,7 @@ export default async function CategoriasPage({
       const budget = (sub.budgets ?? [])[0]?.budgetAmount ?? 0;
       const txs = sub.transactions ?? [];
       const actual = txs.reduce((s, t) => s + t.amount, 0);
-      const paid = isFuture ? 0 : txs.filter((t) => t.isPaid).reduce((s, t) => s + t.amount, 0);
+      const paid = txs.filter((t) => t.isPaid).reduce((s, t) => s + t.amount, 0);
       return {
         id: sub.id,
         name: sub.name,
@@ -68,6 +60,7 @@ export default async function CategoriasPage({
         Categorias e Subcategorias
       </h1>
       <CategoriasClient
+        key={`${month}-${year}`}
         categories={mapped}
         cards={cards.map((c) => ({ id: c.id, name: c.name, colorHex: c.colorHex }))}
         month={month}

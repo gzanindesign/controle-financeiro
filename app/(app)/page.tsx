@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { prisma } from "@/lib/db";
-import { parseMonthParams } from "@/lib/month";
+import { parseMonthParams, getOrCreateMonth } from "@/lib/month";
 import { DashboardClient } from "./DashboardClient";
 
 export default async function DashboardPage({
@@ -14,14 +14,16 @@ export default async function DashboardPage({
   const now = new Date();
   const isFuture = year > now.getFullYear() || (year === now.getFullYear() && month > now.getMonth() + 1);
 
+  // getOrCreateMonth garante que o mês existe no banco e copia orçamentos do mês anterior
+  const monthRecordBase = await getOrCreateMonth(year, month);
   const monthRecord = await prisma.month.findUnique({
-    where: { year_month: { year, month } },
+    where: { id: monthRecordBase.id },
     include: { incomeAllocation: true },
   });
 
   const futureTxTypes = { type: { in: ["FIXED", "INSTALLMENT"] as ("FIXED" | "INSTALLMENT")[] } };
 
-  const [incomeEntries, budgets, paidTxs, allTxs, accountBalances] = await Promise.all([
+  const [incomeEntries, budgets, paidTxs, allTxs, accountBalances, allCategories] = await Promise.all([
     monthRecord ? prisma.incomeEntry.findMany({ where: { monthId: monthRecord.id } }) : [],
     monthRecord
       ? prisma.subcategoryBudget.findMany({
@@ -29,9 +31,21 @@ export default async function DashboardPage({
           include: { subcategory: { include: { category: true } } },
         })
       : [],
-    isFuture ? [] : (monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, isPaid: true }, select: { amount: true } }) : []),
-    monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, ...(isFuture ? futureTxTypes : {}) }, select: { amount: true, subcategoryId: true, subcategory: { select: { kind: true, category: { select: { name: true, icon: true, color: true } } } } } }) : [],
+    // "Pago" = transações marcadas como pagas (fatura quitada), sem restrição de mês futuro
+    monthRecord ? prisma.transaction.findMany({ where: { monthId: monthRecord.id, isPaid: true }, select: { amount: true } }) : [],
+    // "Atual" = todas as transações lançadas no mês, sem filtro por tipo
+    monthRecord ? prisma.transaction.findMany({
+      where: { monthId: monthRecord.id },
+      select: { amount: true, subcategoryId: true, isPaid: true, subcategory: { select: { kind: true, category: { select: { name: true, icon: true, color: true } } } } },
+    }) : [],
     monthRecord ? prisma.accountBalance.findMany({ where: { monthId: monthRecord.id }, select: { balance: true } }) : [],
+    // Busca TODAS as categorias e subcategorias para exibir no dashboard
+    prisma.category.findMany({
+      include: {
+        subcategories: { select: { id: true, name: true } },
+      },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   // Fetch recurring payments due within 3 days this month (not paid)
@@ -67,6 +81,8 @@ export default async function DashboardPage({
     paid: incomeEntries.reduce((s, e) => s + e.actualAmount, 0),
   };
 
+  // "Atual" = soma de TODOS os lançamentos do mês (pagos ou não)
+  // "Pago" = soma apenas dos lançamentos com isPaid = true (fatura quitada)
   const expenses = {
     budget: budgets.reduce((s, b) => s + b.budgetAmount, 0),
     actual: allTxs.reduce((s, t) => s + t.amount, 0),
@@ -82,7 +98,7 @@ export default async function DashboardPage({
     spendingByKind[kind] += tx.amount;
   }
 
-  // Gasto real por subcategoria
+  // Gasto real por subcategoria (todos os lançamentos, pagos ou não)
   const actualBySubcategory: Record<string, number> = {};
   for (const tx of allTxs) {
     if (tx.subcategoryId) {
@@ -90,18 +106,36 @@ export default async function DashboardPage({
     }
   }
 
-  // Agrupa por categoria com subcategorias
-  const categoryMap = new Map<string, { name: string; icon: string | null; color: string; budget: number; actual: number; subcategories: { name: string; budget: number; actual: number }[] }>();
+  // Orçamento por subcategoria
+  const budgetBySubcategory: Record<string, number> = {};
   for (const b of budgets) {
-    const catName = b.subcategory.category.name;
-    if (!categoryMap.has(catName)) categoryMap.set(catName, { name: catName, icon: b.subcategory.category.icon ?? null, color: b.subcategory.category.color ?? "#6366f1", budget: 0, actual: 0, subcategories: [] });
-    const cat = categoryMap.get(catName)!;
-    const subActual = actualBySubcategory[b.subcategoryId] ?? 0;
-    cat.budget += b.budgetAmount;
-    cat.actual += subActual;
-    cat.subcategories.push({ name: b.subcategory.name, budget: b.budgetAmount, actual: subActual });
+    budgetBySubcategory[b.subcategoryId] = b.budgetAmount;
   }
-  const categoryCards = Array.from(categoryMap.values()).filter(c => c.budget > 0);
+
+  // Monta categoryCards usando TODAS as categorias e subcategorias
+  // Inclui categorias sem orçamento definido, desde que tenham gastos ou subcategorias cadastradas
+  const categoryCards = allCategories
+    .map((cat) => {
+      const subcategories = cat.subcategories.map((sub) => ({
+        name: sub.name,
+        budget: budgetBySubcategory[sub.id] ?? 0,
+        actual: actualBySubcategory[sub.id] ?? 0,
+      }));
+
+      const catBudget = subcategories.reduce((s, s2) => s + s2.budget, 0);
+      const catActual = subcategories.reduce((s, s2) => s + s2.actual, 0);
+
+      return {
+        name: cat.name,
+        icon: cat.icon ?? null,
+        color: cat.color ?? "#6366f1",
+        budget: catBudget,
+        actual: catActual,
+        subcategories,
+      };
+    })
+    // Exibe todas as categorias cadastradas, sempre
+    .filter((c) => c.subcategories.length > 0);
 
   const allocation = {
     essential: monthRecord?.incomeAllocation?.essential ?? 0,
@@ -113,6 +147,7 @@ export default async function DashboardPage({
     <div className="max-w-5xl mx-auto">
       <Suspense fallback={null}>
         <DashboardClient
+          key={`${month}-${year}`}
           income={income}
           expenses={expenses}
           lastUpdatedAt={monthRecord?.lastUpdatedAt?.toISOString() ?? null}

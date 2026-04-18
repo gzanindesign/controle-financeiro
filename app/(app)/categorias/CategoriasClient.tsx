@@ -98,7 +98,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
     if (budgetValue > 0) {
       await fetch("/api/budgets", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subcategoryId: sub.id, month, year, budgetAmount: budgetValue, paidAmount: 0 }),
+        body: JSON.stringify({ subcategoryId: sub.id, month, year, budgetAmount: budgetValue, paidAmount: 0, applyToFuture: true }),
       });
     }
     const card = cards.find((c) => c.id === sub.cardId) ?? null;
@@ -114,7 +114,7 @@ export function CategoriasClient({ categories: initial, cards, month, year }: Pr
     const budgetValue = parseFloat(form.budgetAmount) || 0;
     await fetch(`/api/subcategories/${editingSub.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     if (budgetValue !== editingSub.budget) {
-      await fetch("/api/budgets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subcategoryId: editingSub.id, month, year, budgetAmount: budgetValue, paidAmount: 0 }) });
+      await fetch("/api/budgets", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ subcategoryId: editingSub.id, month, year, budgetAmount: budgetValue, paidAmount: 0, applyToFuture: true }) });
     }
     const card = cards.find((c) => c.id === form.cardId) ?? null;
     setCategories((p) => p.map((cat) => ({

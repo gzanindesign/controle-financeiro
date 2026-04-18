@@ -25,6 +25,7 @@ export default async function PagamentosPage({
         Controle de Pagamentos
       </h1>
       <PagamentosClient
+        key={`${month}-${year}`}
         payments={payments.map((p) => ({
           id: p.id,
           description: p.description,

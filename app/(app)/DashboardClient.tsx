@@ -40,7 +40,29 @@ const KINDS = [
 ];
 
 function BudgetBar({ budget, actual, showLabel = false, height = 10 }: { budget: number; actual: number; showLabel?: boolean; height?: number }) {
-  if (budget <= 0) return null;
+  // Sem orçamento definido: mostra barra neutra com o gasto real
+  if (budget <= 0) {
+    return (
+      <div className="flex flex-col gap-1">
+        <div className="relative rounded-full overflow-hidden" style={{ height, backgroundColor: "var(--bg-elevated)" }}>
+          {actual > 0 && (
+            <div
+              className="absolute left-0 top-0 h-full rounded-full"
+              style={{ width: "100%", backgroundColor: "var(--color-text-muted)", opacity: 0.4 }}
+            />
+          )}
+        </div>
+        {showLabel && actual > 0 && (
+          <div className="flex justify-between text-xs">
+            <span style={{ color: "var(--color-text-muted)" }}>
+              Gasto: <strong style={{ color: "var(--color-text)" }}>{formatCurrency(actual)}</strong>
+            </span>
+            <span style={{ color: "var(--color-text-muted)" }}>Sem teto definido</span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const over = actual > budget;
   const diff = Math.abs(actual - budget);
@@ -473,11 +495,14 @@ export function DashboardClient({ income, expenses, lastUpdatedAt, closedAt, has
       {categoryCards.length > 0 && (
         <div className="grid grid-cols-1 gap-4 mb-6 md:grid-cols-2 lg:grid-cols-3">
           {categoryCards.map((cat) => {
-            const catOver = cat.actual > cat.budget;
-            const catDiff = Math.abs(cat.actual - cat.budget);
-            const catColor = !catOver
-              ? cat.actual / cat.budget <= 0.8 ? "var(--color-success)" : "var(--color-warning)"
-              : "var(--color-danger)";
+            const hasBudget = cat.budget > 0;
+            const catOver = hasBudget && cat.actual > cat.budget;
+            const catDiff = hasBudget ? Math.abs(cat.actual - cat.budget) : 0;
+            const catColor = hasBudget
+              ? (!catOver
+                  ? cat.actual / cat.budget <= 0.8 ? "var(--color-success)" : "var(--color-warning)"
+                  : "var(--color-danger)")
+              : "var(--color-text-muted)";
             return (
               <Card key={cat.name} style={{ borderTop: `3px solid ${cat.color}` }}>
                 {/* Cabeçalho da categoria */}
@@ -489,40 +514,56 @@ export function DashboardClient({ income, expenses, lastUpdatedAt, closedAt, has
                     <span className="text-sm font-semibold" style={{ color: "var(--color-text)" }}>{cat.name}</span>
                   </div>
                   <span className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-                    Teto: <strong style={{ color: "var(--color-text)" }}>{formatCurrency(cat.budget)}</strong>
+                    {hasBudget
+                      ? <>Teto: <strong style={{ color: "var(--color-text)" }}>{formatCurrency(cat.budget)}</strong></>
+                      : "Sem teto definido"
+                    }
                   </span>
                 </div>
                 <BudgetBar budget={cat.budget} actual={cat.actual} showLabel />
                 {/* Badge de resultado da categoria */}
-                <div className="mt-4 mb-3">
-                  <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{
-                    backgroundColor: catOver ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)",
-                    color: catColor,
-                  }}>
-                    {catOver ? `Estourou ${formatCurrency(catDiff)} acima do teto` : `${formatCurrency(catDiff)} dentro do teto`}
-                  </span>
-                </div>
+                {hasBudget && (
+                  <div className="mt-4 mb-3">
+                    <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{
+                      backgroundColor: catOver ? "rgba(239,68,68,0.12)" : "rgba(34,197,94,0.12)",
+                      color: catColor,
+                    }}>
+                      {catOver ? `Estourou ${formatCurrency(catDiff)} acima do teto` : `${formatCurrency(catDiff)} dentro do teto`}
+                    </span>
+                  </div>
+                )}
 
                 {/* Divisor */}
-                <div style={{ height: 1, backgroundColor: "var(--bg-border)", marginBottom: 12 }} />
+                <div style={{ height: 1, backgroundColor: "var(--bg-border)", marginBottom: 12, marginTop: hasBudget ? 0 : 12 }} />
 
                 {/* Subcategorias */}
                 <div className="flex flex-col gap-3">
                   {cat.subcategories.map((sub) => {
-                    const subOver = sub.actual > sub.budget;
-                    const subDiff = Math.abs(sub.actual - sub.budget);
-                    const subColor = !subOver
-                      ? sub.actual / sub.budget <= 0.8 ? "var(--color-success)" : "var(--color-warning)"
-                      : "var(--color-danger)";
+                    const subHasBudget = sub.budget > 0;
+                    const subOver = subHasBudget && sub.actual > sub.budget;
+                    const subDiff = subHasBudget ? Math.abs(sub.actual - sub.budget) : 0;
+                    const subColor = subHasBudget
+                      ? (!subOver
+                          ? sub.actual / sub.budget <= 0.8 ? "var(--color-success)" : "var(--color-warning)"
+                          : "var(--color-danger)")
+                      : "var(--color-text-muted)";
                     return (
                       <div key={sub.name}>
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium" style={{ color: "var(--color-text)" }}>{sub.name}</span>
                           <div className="flex items-center gap-2 text-xs">
-                            <span style={{ color: "var(--color-text-muted)" }}>Teto {formatCurrency(sub.budget)}</span>
-                            <span style={{ color: subColor, fontWeight: 600 }}>
-                              {subOver ? `▲ +${formatCurrency(subDiff)}` : `-${formatCurrency(subDiff)}`}
-                            </span>
+                            {subHasBudget ? (
+                              <>
+                                <span style={{ color: "var(--color-text-muted)" }}>Teto {formatCurrency(sub.budget)}</span>
+                                <span style={{ color: subColor, fontWeight: 600 }}>
+                                  {subOver ? `▲ +${formatCurrency(subDiff)}` : `-${formatCurrency(subDiff)}`}
+                                </span>
+                              </>
+                            ) : (
+                              <span style={{ color: "var(--color-text-muted)" }}>
+                                {sub.actual > 0 ? formatCurrency(sub.actual) : "Sem teto"}
+                              </span>
+                            )}
                           </div>
                         </div>
                         <BudgetBar budget={sub.budget} actual={sub.actual} height={6} />

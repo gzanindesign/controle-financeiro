@@ -44,6 +44,7 @@ export default async function ContasPage({
         Contas e Reconciliação
       </h1>
       <ContasClient
+        key={`${month}-${year}`}
         accounts={accounts.map((a) => ({ id: a.id, name: a.name, type: a.type, balance: balanceMap[a.id] ?? 0 }))}
         totalIncome={totalIncome}
         totalPaid={totalPaid}

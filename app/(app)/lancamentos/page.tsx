@@ -39,6 +39,7 @@ export default async function LancamentosPage({
         Lançamentos
       </h1>
       <LancamentosClient
+        key={`${month}-${year}`}
         transactions={transactions.map((t) => ({
           id: t.id, date: t.date.toISOString(), description: t.description,
           amount: t.amount, type: t.type,

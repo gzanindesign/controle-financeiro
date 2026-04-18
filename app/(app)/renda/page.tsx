@@ -43,6 +43,7 @@ export default async function RendaPage({
         Renda
       </h1>
       <IncomeClient
+        key={`${month}-${year}`}
         entries={entries.map((e) => ({
           id: e.id,
           description: e.description,
